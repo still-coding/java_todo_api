@@ -15,8 +15,7 @@ import store.TaskStore;
 import utils.ResponseHelper;
 
 import javax.inject.Inject;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletionStage;
 
 import static java.util.concurrent.CompletableFuture.supplyAsync;
@@ -63,13 +62,31 @@ public class TaskController extends Controller {
     }
 
     @Security.Authenticated(JwtAuthorizationFilter.class)
-    public CompletionStage<Result> retrieveAll(Http.Request request) {
+    public CompletionStage<Result> retrieveAll(Http.Request request, Optional<String> sort) {
         String userId = request.attrs().get(Security.USERNAME);
         return supplyAsync(() -> {
             if (userId == null) {
                 return unauthorized(ResponseHelper.createResponse("Invalid credentials"));
             }
-            Set<Task> result = taskStore.retrieveAll(Integer.parseInt(userId));
+
+            List<Task> result = taskStore.retrieveAll(Integer.parseInt(userId));
+            if (sort.isPresent())
+            {
+                switch (sort.get()) {
+                    case "created":
+                        result.sort(Comparator.comparing(Task::getCreatedAt));
+                        break;
+                    case "createdDesc":
+                        result.sort(Comparator.comparing(Task::getCreatedAt).reversed());
+                        break;
+                    case "name":
+                        result.sort(Comparator.comparing(Task::getName));
+                        break;
+                    case "nameDesc":
+                        result.sort(Comparator.comparing(Task::getName).reversed());
+                        break;
+                }
+            }
             ObjectMapper mapper = new ObjectMapper();
             JsonNode jsonData = mapper.convertValue(result, JsonNode.class);
             return ok(jsonData);

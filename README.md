@@ -19,14 +19,14 @@ My first ever java project so here how it was.
 ### Day 3
 
 * made Postman collection to test API
-* made JWT auth - that was a though one at first
+* made JWT auth - that was a tough one at first
 * finished endpoints
 * found myself writing big chunks of code without googling
-* started writing tests 
+* wrote functional tests
+* add task sorting
 
 ### Plans
 
-* finish tests
 * add MongoDB storage
 * dockerize app
 * code some bonus functionality

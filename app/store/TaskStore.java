@@ -3,8 +3,10 @@ package store;
 import models.Task;
 import models.User;
 
+import javax.inject.Singleton;
 import java.util.*;
 
+@Singleton
 public class TaskStore {
     private Map<Integer, Task> tasks = new HashMap<>();
 
@@ -19,8 +21,8 @@ public class TaskStore {
         return Optional.ofNullable(tasks.get(id));
     }
 
-    public Set<Task> retrieveAll(int user_id) {
-        HashSet<Task> result = new HashSet<>();
+    public List<Task> retrieveAll(int user_id) {
+        List<Task> result = new ArrayList<Task>();
         for (Task task : tasks.values()) {
             if (task.getUserId() == user_id)
                 result.add(task);

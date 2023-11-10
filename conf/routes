@@ -9,7 +9,7 @@ GET     /users                      controllers.UserController.retrieve(request:
 
 GET     /login                      controllers.AuthController.login(request: Request)
 
-GET     /tasks                      controllers.TaskController.retrieveAll(request: Request)
+GET     /tasks                      controllers.TaskController.retrieveAll(request: Request, sort: java.util.Optional[String])
 POST    /tasks                      controllers.TaskController.create(request: Request)
 GET     /tasks/:id                  controllers.TaskController.retrieve(request: Request, id: Int)
 PUT     /tasks                      controllers.TaskController.update(request: Request)

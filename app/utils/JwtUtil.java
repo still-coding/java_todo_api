@@ -29,7 +29,7 @@ public class JwtUtil {
             return decodedJWT.getSubject();
         } catch (JWTVerificationException exception) {
             System.out.println(exception);
+            return null;
         }
-        return null;
     }
 }
