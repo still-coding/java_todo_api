@@ -26,10 +26,11 @@ public class JwtAuthorizationFilter extends Security.Authenticator {
     public Optional<String> getUsername(Http.Request req) {
         String token = getTokenFromRequest(req);
         if (token == null)
-        {
             return Optional.empty();
-        }
+
         String userId = JwtUtil.verifyToken(token);
+        if (userId == null)
+            return Optional.empty();
         if (!ObjectId.isValid(userId))
             return Optional.empty();
         if (userStore.retrieve(new ObjectId(userId)).isEmpty())
