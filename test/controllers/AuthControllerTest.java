@@ -20,6 +20,11 @@ import static play.test.Helpers.route;
 
 
 public class AuthControllerTest extends WithApplication {
+    @Override
+    protected Application provideApplication() {
+        return new GuiceApplicationBuilder().build();
+    }
+
     private final JsonNode userNode = Json.newObject();
     private String token = null;
 

@@ -26,6 +26,11 @@ import static play.test.Helpers.*;
 import static play.test.Helpers.route;
 
 public class UserControllerTest extends WithApplication {
+    @Override
+    protected Application provideApplication() {
+        return new GuiceApplicationBuilder().build();
+    }
+
     private final JsonNode jsonNode = Json.newObject();
 
 

@@ -24,6 +24,11 @@ import static play.test.Helpers.*;
 
 
 public class TaskControllerTest extends WithApplication {
+    @Override
+    protected Application provideApplication() {
+        return new GuiceApplicationBuilder().build();
+    }
+
 
     private static String token = null;
 

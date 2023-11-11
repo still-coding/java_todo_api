@@ -1,10 +1,21 @@
 # java_todo_api
 
-![Tests status](https://github.com/still-coding/java_todo_api/actions/workflows/sbt-test.yml/badge.svg?branch=main)
-
 Todo REST API built with Play framework and Java.
 
-My first ever java project so here how it was.
+## Quick start
+Execute:
+```shell
+sbt Universal/packageZipTarbal
+docker compose up
+```
+
+Go to http://localhost:9000/ to see welcome message.
+
+Use `java-todo-api` Postman Collection to work with API. 
+
+
+
+This is my first ever java project so here how it was.
 
 ## Dev log
 
@@ -37,9 +48,8 @@ My first ever java project so here how it was.
 * added docker-compose.yml with Mongo and MongoExpress
 * fixed tests
 * added task labels
-
+* dockerized app
 
 ### Plans
 
-* dockerize app
 * set up testing workflow with GH Actions
