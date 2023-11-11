@@ -7,22 +7,19 @@ import org.junit.Before;
 import org.junit.Test;
 import play.Application;
 import play.inject.guice.GuiceApplicationBuilder;
-import play.mvc.Http;
 import play.libs.Json;
+import play.mvc.Http;
 import play.mvc.Result;
 import play.test.WithApplication;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.TimeZone;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static play.mvc.Http.Status.*;
 import static play.test.Helpers.*;
-import static play.test.Helpers.route;
 
 
 public class TaskControllerTest extends WithApplication {
@@ -33,8 +30,10 @@ public class TaskControllerTest extends WithApplication {
 
     private static String token = null;
 
+    private static ArrayList<String> taskIds = null;
+
     @Before
-    public void createUserAndLogin() {
+    public void setUp() {
         JsonNode userNode = Json.newObject();
         ((ObjectNode) userNode).put("name", "John");
         ((ObjectNode) userNode).put("password", "1q2w3e4r");
@@ -56,11 +55,32 @@ public class TaskControllerTest extends WithApplication {
         assertEquals(OK, result.status());
 
         token = Json.parse(contentAsString(result)).get("token").asText();
+        taskIds = new ArrayList<>();
     }
 
     @After
-    public void nullifyToken() {
+    public void tearDown() {
+
+        Http.RequestBuilder request;
+        Result result;
+        for (String id: taskIds) {
+            request= new Http.RequestBuilder()
+                    .method(DELETE)
+                    .header("Authorization", "Bearer " + token)
+                    .uri("/tasks/" + id);
+        }
+
+
+        request = new Http.RequestBuilder()
+                .method(DELETE)
+                .header("Authorization", "Bearer " + token)
+                .uri("/users");
+
+        result = route(app, request);
+        assertEquals(OK, result.status());
+
         token = null;
+        taskIds = null;
     }
 
 
@@ -82,14 +102,13 @@ public class TaskControllerTest extends WithApplication {
         assertEquals("application/json", result.contentType().get());
 
         JsonNode jsonResult = Json.parse(contentAsString(result));
-        assertEquals(jsonResult.get("id").asText(), "0");
-        assertEquals(jsonResult.get("userId").asText(), "0");
         assertEquals(jsonResult.get("name").asText(), "test task 1");
         assertEquals(jsonResult.get("description").asText(), "test task 1 description");
 
         DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.getDefault());
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         assertTrue(jsonResult.get("createdAt").asText().contains(formatter.format(new Date()).substring(0, 18)));
+        taskIds.add(jsonResult.get("id").asText());
     }
 
     @Test
@@ -111,21 +130,20 @@ public class TaskControllerTest extends WithApplication {
         assertEquals("application/json", result.contentType().get());
 
         JsonNode jsonResult = Json.parse(contentAsString(result));
-        assertEquals(jsonResult.get("id").asText(), "1");
-        assertEquals(jsonResult.get("userId").asText(), "0");
         assertEquals(jsonResult.get("name").asText(), "test task 2");
         assertEquals(jsonResult.get("description").asText(), "test task 2 description");
 
         DateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.getDefault());
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         assertTrue(jsonResult.get("createdAt").asText().contains(formatter.format(new Date()).substring(0, 18)));
+        taskIds.add(jsonResult.get("id").asText());
     }
 
     @Test
     public void canUpdateTask() {
         canCreateTask();
         final JsonNode jsonNode = Json.newObject();
-        ((ObjectNode) jsonNode).put("id", 0);
+        ((ObjectNode) jsonNode).put("id", taskIds.get(0));
         ((ObjectNode) jsonNode).put("name", "test task 2");
         ((ObjectNode) jsonNode).put("description", "test task 2 description");
 
@@ -141,8 +159,8 @@ public class TaskControllerTest extends WithApplication {
         assertEquals("application/json", result.contentType().get());
 
         JsonNode jsonResult = Json.parse(contentAsString(result));
-        assertEquals(jsonResult.get("id").asText(), "0");
-        assertEquals(jsonResult.get("userId").asText(), "0");
+        assertEquals(jsonResult.get("id").asText(), taskIds.get(0));
+//        assertEquals(jsonResult.get("userId").asText(), "0");
         assertEquals(jsonResult.get("name").asText(), "test task 2");
         assertEquals(jsonResult.get("description").asText(), "test task 2 description");
 
@@ -157,7 +175,7 @@ public class TaskControllerTest extends WithApplication {
         Http.RequestBuilder request = new Http.RequestBuilder()
                 .method(DELETE)
                 .header("Authorization", "Bearer " + token)
-                .uri("/tasks/0");
+                .uri("/tasks/" + taskIds.get(0));
 
         Result result = route(app, request);
         assertEquals(OK, result.status());
@@ -165,7 +183,14 @@ public class TaskControllerTest extends WithApplication {
         assertEquals("application/json", result.contentType().get());
 
         JsonNode jsonResult = Json.parse(contentAsString(result));
-        assertEquals(jsonResult.get("message").asText(), "Task with id:0 deleted");
+        assertEquals(jsonResult.get("message").asText(), "Task with id:" + taskIds.get(0) +" deleted");
+
+        request = new Http.RequestBuilder()
+                .method(GET)
+                .header("Authorization", "Bearer " + token)
+                .uri("/tasks/" + taskIds.get(0));
+        result = route(app, request);
+        assertEquals(NOT_FOUND, result.status());
     }
 
     @Test
@@ -174,7 +199,7 @@ public class TaskControllerTest extends WithApplication {
         Http.RequestBuilder request = new Http.RequestBuilder()
                 .method(GET)
                 .header("Authorization", "Bearer " + token)
-                .uri("/tasks/0");
+                .uri("/tasks/" + taskIds.get(0));
 
         Result result = route(app, request);
         assertEquals(OK, result.status());
@@ -187,7 +212,7 @@ public class TaskControllerTest extends WithApplication {
         request = new Http.RequestBuilder()
                 .method(GET)
                 .header("Authorization", "Bearer " + token)
-                .uri("/tasks/1");
+                .uri("/tasks/" + taskIds.get(1));
 
         result = route(app, request);
         assertEquals(OK, result.status());

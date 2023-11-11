@@ -53,7 +53,7 @@ public class AuthController extends Controller {
                     return errorResult;
                 }
                 JsonNode jsonObject = JsonNodeFactory.instance.objectNode();
-                ((ObjectNode) jsonObject).put("token", JwtUtil.generateToken(Integer.toString(user.getId())));
+                ((ObjectNode) jsonObject).put("token", JwtUtil.generateToken(user.getId()));
                 ((ObjectNode) jsonObject).put("token_type", "bearer");
                 return ok(jsonObject);
             }).orElse(errorResult);

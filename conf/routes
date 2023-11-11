@@ -6,14 +6,15 @@ GET     /                           controllers.HomeController.index()
 
 POST    /users                      controllers.UserController.create(request: Request)
 GET     /users                      controllers.UserController.retrieve(request: Request)
+DELETE  /users                      controllers.UserController.delete(request: Request)
 
 GET     /login                      controllers.AuthController.login(request: Request)
 
-GET     /tasks                      controllers.TaskController.retrieveAll(request: Request, sort: java.util.Optional[String])
+GET     /tasks                      controllers.TaskController.retrieveAll(request: Request, sort: java.util.Optional[String], label: java.util.List[String])
 POST    /tasks                      controllers.TaskController.create(request: Request)
-GET     /tasks/:id                  controllers.TaskController.retrieve(request: Request, id: Int)
+GET     /tasks/:id                  controllers.TaskController.retrieve(request: Request, id: String)
 PUT     /tasks                      controllers.TaskController.update(request: Request)
-DELETE  /tasks/:id                  controllers.TaskController.delete(request: Request, id: Int)
+DELETE  /tasks/:id                  controllers.TaskController.delete(request: Request, id: String)
 
 
 # Map static resources from the /public folder to the /assets URL path

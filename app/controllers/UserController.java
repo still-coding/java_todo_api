@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import filters.JwtAuthorizationFilter;
 import models.User;
+import org.bson.types.ObjectId;
 import play.libs.Json;
 import play.libs.concurrent.ClassLoaderExecutionContext;
 import play.mvc.Controller;
@@ -46,24 +47,22 @@ public class UserController extends Controller {
                 return badRequest(ResponseHelper.createResponse("Missing parameter(s): "
                         + (nameMissing ? "[name]" : "") + (passwordMissing ? "[password]" : "")));
             }
-
-            Optional<User> userOptional = userStore.create(Json.fromJson(json, User.class));
-            if (userOptional.isEmpty()) {
-                // feels like 409 but didn't find it in Results
+            User reqUser = Json.fromJson(json, User.class);
+            if (userStore.getByUsername(reqUser.getName()).isPresent())
+            {
                 return badRequest(ResponseHelper.createResponse("User " + userName + " already exists"));
             }
-
-            if (password == null || password.length() < 6) {
-                return unauthorized(ResponseHelper.createResponse("Password is too short"));
+            if (password.length() < 6) {
+                return badRequest(ResponseHelper.createResponse("Password is too short"));
             }
-
-            String hash = PasswordHelper.hash(password);
+            reqUser.setPassword(PasswordHelper.hash(password));
+            Optional<User> userOptional = userStore.create(reqUser);
             return userOptional.map(user -> {
-                user.setPassword(hash);
                 JsonNode jsonResponse = Json.toJson(user);
                 ((ObjectNode)jsonResponse).remove("password");
                 return created(jsonResponse);
             }).orElse(internalServerError(ResponseHelper.createResponse("Could not create data")));
+            // feels like 409 but didn't find it in Results
         }, ec.current());
     }
 
@@ -71,12 +70,24 @@ public class UserController extends Controller {
     public CompletionStage<Result> retrieve(Http.Request request) {
         return supplyAsync(() -> {
             String userId = request.attrs().get(Security.USERNAME);
-            final Optional<User> userOptional = userStore.retrieve(Integer.parseInt(userId));
+            final Optional<User> userOptional = userStore.retrieve(new ObjectId(userId));
             return userOptional.map(user -> {
                 JsonNode jsonResponse = Json.toJson(user);
                 ((ObjectNode)jsonResponse).remove("password");
                 return ok(jsonResponse);
             }).orElse(notFound(ResponseHelper.createResponse("User not found")));
+        }, ec.current());
+    }
+
+    @Security.Authenticated(JwtAuthorizationFilter.class)
+    public CompletionStage<Result> delete(Http.Request request) {
+        return supplyAsync(() -> {
+            String userId = request.attrs().get(Security.USERNAME);
+            if (userStore.delete(new ObjectId(userId)))
+            {
+                return ok(ResponseHelper.createResponse("User with id:" + userId + " deleted"));
+            }
+            return notFound(ResponseHelper.createResponse("User with id:" + userId + " not found"));
         }, ec.current());
     }
 }

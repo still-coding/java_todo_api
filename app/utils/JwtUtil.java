@@ -6,11 +6,12 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.util.Date;
+import utils.Settings;
 
 public class JwtUtil {
-    private static final String SECRET_KEY = "my-very-secret-key";
+    private static final String SECRET_KEY = Settings.getJwtSecretKey();
 
-    private static final int TOKEN_EXPIRATION_MINUTES = 60;
+    private static final int TOKEN_EXPIRATION_MINUTES = Settings.getJwtExpirationMinutes();
 
     public static String generateToken(String userId) {
         Date now = new Date();

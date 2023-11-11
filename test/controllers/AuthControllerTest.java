@@ -3,6 +3,7 @@ package controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.Before;
+import org.junit.After;
 import org.junit.Test;
 import play.Application;
 import play.inject.guice.GuiceApplicationBuilder;
@@ -25,6 +26,8 @@ public class AuthControllerTest extends WithApplication {
     }
 
     private final JsonNode userNode = Json.newObject();
+    private String token = null;
+
 
     @Before
     public void createUser() {
@@ -40,6 +43,17 @@ public class AuthControllerTest extends WithApplication {
         assertEquals(CREATED, result.status());
     }
 
+    @After
+    public void tearDown() {
+        Http.RequestBuilder request = new Http.RequestBuilder()
+                .method(DELETE)
+                .header("Authorization", "Bearer " + token)
+                .uri("/users");
+
+        Result result = route(app, request);
+        assertEquals(OK, result.status());
+    }
+
     @Test
     public void canLogin() {
         Http.RequestBuilder loginRequest = new Http.RequestBuilder()
@@ -52,6 +66,8 @@ public class AuthControllerTest extends WithApplication {
         assertTrue(result.contentType().isPresent());
         assertEquals("application/json", result.contentType().get());
         JsonNode jsonResult = Json.parse(contentAsString(result));
-        assertTrue(jsonResult.get("token").asText().startsWith("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."));
+        String tok = jsonResult.get("token").asText();
+        assertTrue(tok.startsWith("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."));
+        token = tok;
     }
 }

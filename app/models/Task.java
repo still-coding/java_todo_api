@@ -1,31 +1,41 @@
 package models;
 
 import java.util.Date;
-import com.fasterxml.jackson.annotation.JsonFormat;
-public class Task {
-    private int id;
+import java.util.HashSet;
+import java.util.List;
 
-    private int userId;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import dev.morphia.annotations.Entity;
+import dev.morphia.annotations.Id;
+import org.bson.types.ObjectId;
+
+@Entity("tasks")
+public class Task {
+    @Id
+    private ObjectId id;
+
+    private ObjectId userId;
     private String name;
     private String description;
 
+    private HashSet<String> labels;
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Date createdAt;
 
 
-    public int getId() {
-        return id;
+    public String getId() {
+        return id.toHexString();
     }
 
-    public void setId(int id) {
+    public void setId(ObjectId id) {
         this.id = id;
     }
 
-    public int getUserId() {
-        return userId;
+    public String getUserId() {
+        return userId.toHexString();
     }
 
-    public void setUserId(int userId) {
+    public void setUserId(ObjectId userId) {
         this.userId = userId;
     }
 
@@ -54,7 +64,15 @@ public class Task {
         this.createdAt = new Date();
     }
 
-    public Task(int id, String name, String description) {
+    public HashSet<String> getLabels() {
+        return labels;
+    }
+
+    public void setLabels(HashSet<String> labels) {
+        this.labels = labels;
+    }
+
+    public Task(ObjectId id, String name, String description) {
         this.id = id;
         this.name = name;
         this.description = description;

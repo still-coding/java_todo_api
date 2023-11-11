@@ -3,6 +3,8 @@ package controllers;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import play.Application;
 import play.inject.guice.GuiceApplicationBuilder;
@@ -29,12 +31,38 @@ public class UserControllerTest extends WithApplication {
         return new GuiceApplicationBuilder().build();
     }
 
-    @Test
-    public void canCreateUser() {
-        final JsonNode jsonNode = Json.newObject();
+    private final JsonNode jsonNode = Json.newObject();
+
+
+    @Before
+    public void setUp() {
         ((ObjectNode) jsonNode).put("name", "John");
         ((ObjectNode) jsonNode).put("password", "1q2w3e4r");
 
+    }
+
+    @After
+    public void tearDown() {
+        Http.RequestBuilder request = new Http.RequestBuilder()
+                .method(GET)
+                .bodyJson(jsonNode)
+                .uri("/login");
+
+        Result result = route(app, request);
+        if (result.status() == OK)
+        {
+            request = new Http.RequestBuilder()
+                    .method(DELETE)
+                    .header("Authorization", "Bearer " + Json.parse(contentAsString(result)).get("token").asText())
+                    .uri("/users");
+            result = route(app, request);
+            assertEquals(OK, result.status());
+        }
+
+    }
+
+    @Test
+    public void canCreateUser() {
         Http.RequestBuilder request = new Http.RequestBuilder()
                 .method(POST)
                 .bodyJson(jsonNode)
@@ -57,9 +85,7 @@ public class UserControllerTest extends WithApplication {
 
     @Test
     public void cantCreateUserWithoutName() {
-        final JsonNode jsonNode = Json.newObject();
-        ((ObjectNode) jsonNode).put("password", "1q2w3e4r");
-
+        ((ObjectNode) jsonNode).remove("name");
         Http.RequestBuilder request = new Http.RequestBuilder()
                 .method(POST)
                 .bodyJson(jsonNode)
@@ -67,12 +93,12 @@ public class UserControllerTest extends WithApplication {
 
         Result result = route(app, request);
         assertEquals(BAD_REQUEST, result.status());
+        ((ObjectNode) jsonNode).put("name", "John");
     }
 
     @Test
     public void cantCreateUserWithoutPassword() {
-        final JsonNode jsonNode = Json.newObject();
-        ((ObjectNode) jsonNode).put("name", "Vasya");
+        ((ObjectNode) jsonNode).remove("password");
 
         Http.RequestBuilder request = new Http.RequestBuilder()
                 .method(POST)
@@ -81,6 +107,7 @@ public class UserControllerTest extends WithApplication {
 
         Result result = route(app, request);
         assertEquals(BAD_REQUEST, result.status());
+        ((ObjectNode) jsonNode).put("password", "1q2w3e4r");
     }
 
 
@@ -98,10 +125,6 @@ public class UserControllerTest extends WithApplication {
 
     @Test
     public void cantCreateSameUserTwice() {
-        final JsonNode jsonNode = Json.newObject();
-        ((ObjectNode) jsonNode).put("name", "John");
-        ((ObjectNode) jsonNode).put("password", "1q2w3e4r");
-
         Http.RequestBuilder request = new Http.RequestBuilder()
                 .method(POST)
                 .bodyJson(jsonNode)
@@ -113,5 +136,4 @@ public class UserControllerTest extends WithApplication {
         result = route(app, request);
         assertEquals(BAD_REQUEST, result.status());
     }
-
 }

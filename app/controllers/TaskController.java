@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import filters.JwtAuthorizationFilter;
 import models.Task;
+import org.bson.types.ObjectId;
 import play.libs.Json;
 import play.libs.concurrent.ClassLoaderExecutionContext;
 import play.mvc.Controller;
@@ -13,6 +14,7 @@ import play.mvc.Result;
 import play.mvc.Security;
 import store.TaskStore;
 import utils.ResponseHelper;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -51,7 +53,7 @@ public class TaskController extends Controller {
                 return badRequest(ResponseHelper.createResponse("Missing parameter(s): "
                         + (nameMissing ? "[name]" : "") + (descriptionMissing ? "[description]" : "")));
             }
-            ((ObjectNode)json).put("userId", Integer.parseInt(userId));
+            ((ObjectNode)json).put("userId", userId);
             Optional<Task> taskOptional = taskStore.create(Json.fromJson(json, Task.class));
 
             return taskOptional.map(task -> {
@@ -62,31 +64,30 @@ public class TaskController extends Controller {
     }
 
     @Security.Authenticated(JwtAuthorizationFilter.class)
-    public CompletionStage<Result> retrieveAll(Http.Request request, Optional<String> sort) {
+    public CompletionStage<Result> retrieveAll(Http.Request request, Optional<String> sort, List<String> labels) {
         String userId = request.attrs().get(Security.USERNAME);
         return supplyAsync(() -> {
             if (userId == null) {
                 return unauthorized(ResponseHelper.createResponse("Invalid credentials"));
             }
+            List<Task> result = taskStore.retrieveAll(new ObjectId(userId));
 
-            List<Task> result = taskStore.retrieveAll(Integer.parseInt(userId));
+            if (!labels.isEmpty()) {
+                result = result.stream()
+                        .filter(task -> !Collections.disjoint(task.getLabels(), labels))
+                        .collect(Collectors.toList());
+            }
+
             if (sort.isPresent())
             {
                 switch (sort.get()) {
-                    case "created":
-                        result.sort(Comparator.comparing(Task::getCreatedAt));
-                        break;
-                    case "createdDesc":
-                        result.sort(Comparator.comparing(Task::getCreatedAt).reversed());
-                        break;
-                    case "name":
-                        result.sort(Comparator.comparing(Task::getName));
-                        break;
-                    case "nameDesc":
-                        result.sort(Comparator.comparing(Task::getName).reversed());
-                        break;
+                    case "created" -> result.sort(Comparator.comparing(Task::getCreatedAt));
+                    case "-created" -> result.sort(Comparator.comparing(Task::getCreatedAt).reversed());
+                    case "name" -> result.sort(Comparator.comparing(Task::getName));
+                    case "-name" -> result.sort(Comparator.comparing(Task::getName).reversed());
                 }
             }
+
             ObjectMapper mapper = new ObjectMapper();
             JsonNode jsonData = mapper.convertValue(result, JsonNode.class);
             return ok(jsonData);
@@ -94,16 +95,15 @@ public class TaskController extends Controller {
     }
 
     @Security.Authenticated(JwtAuthorizationFilter.class)
-    public CompletionStage<Result> retrieve(Http.Request request, int id) {
+    public CompletionStage<Result> retrieve(Http.Request request, String id) {
         String userId = request.attrs().get(Security.USERNAME);
         return supplyAsync(() -> {
             if (userId == null) {
                 return unauthorized(ResponseHelper.createResponse("Invalid credentials"));
             }
-            int userIdInt = Integer.parseInt(userId);
-            final Optional<Task> taskOptional = taskStore.retrieve(id);
+            final Optional<Task> taskOptional = taskStore.retrieve(new ObjectId(id));
             return taskOptional.map(task -> {
-                if (task.getUserId() != userIdInt)
+                if (!Objects.equals(task.getUserId(), userId))
                     return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
                 JsonNode jsonResponse = Json.toJson(task);
                 return ok(jsonResponse);
@@ -135,12 +135,12 @@ public class TaskController extends Controller {
                         + (nameMissing ? "[name]" : "")
                         + (descriptionMissing ? "[description]" : "")));
             }
-            Optional<Task> taskOptionalFromReq = taskStore.retrieve(Integer.parseInt(id));
+            Optional<Task> taskOptionalFromReq = taskStore.retrieve(new ObjectId(id));
             if (taskOptionalFromReq.isEmpty()) {
                 return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
             }
             Task taskToUpdate = taskOptionalFromReq.get();
-            if (taskToUpdate.getUserId() != Integer.parseInt(userId)) {
+            if (!Objects.equals(taskToUpdate.getUserId(), userId)) {
                 return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
             }
             Optional<Task> taskOptional = taskStore.update(Json.fromJson(json, Task.class));
@@ -152,17 +152,17 @@ public class TaskController extends Controller {
     }
 
     @Security.Authenticated(JwtAuthorizationFilter.class)
-    public CompletionStage<Result> delete(Http.Request request, int id) {
+    public CompletionStage<Result> delete(Http.Request request, String id) {
         String userId = request.attrs().get(Security.USERNAME);
         return supplyAsync(() -> {
-            Optional<Task> taskOptional = taskStore.retrieve(id);
+            ObjectId taskId = new ObjectId(id);
+            Optional<Task> taskOptional = taskStore.retrieve(taskId);
             return taskOptional.map(task -> {
-                if (task.getUserId() != Integer.parseInt(userId))
+                if (!Objects.equals(task.getUserId(), userId))
                     return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
-                taskStore.delete(id);
+                taskStore.delete(taskId);
                 return ok(ResponseHelper.createResponse("Task with id:" + id + " deleted"));
             }).orElse(notFound(ResponseHelper.createResponse("Task with id:" + id + " not found")));
         }, ec.current());
     }
-
 }

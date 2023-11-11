@@ -1,5 +1,6 @@
 package filters;
 
+import org.bson.types.ObjectId;
 import play.mvc.Http;
 import play.mvc.Result;
 import play.mvc.Security;
@@ -29,7 +30,9 @@ public class JwtAuthorizationFilter extends Security.Authenticator {
             return Optional.empty();
         }
         String userId = JwtUtil.verifyToken(token);
-        if (userStore.retrieve(Integer.parseInt(userId)).isEmpty())
+        if (!ObjectId.isValid(userId))
+            return Optional.empty();
+        if (userStore.retrieve(new ObjectId(userId)).isEmpty())
             return Optional.empty();
         return Optional.ofNullable(userId);
     }
