@@ -1,4 +1,4 @@
-name: Python test
+name: Java test
 
 on:
   push:
@@ -29,6 +29,7 @@ jobs:
       - name: Setup JDK
         uses: actions/setup-java@v3
         with:
+          distribution: temurin
           java-version: 21
       - name: Build and Test
         env:
