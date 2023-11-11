@@ -12,6 +12,7 @@ import play.mvc.Http;
 import play.mvc.Result;
 import play.test.WithApplication;
 
+import javax.inject.Inject;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -27,6 +28,7 @@ public class TaskControllerTest extends WithApplication {
     protected Application provideApplication() {
         return new GuiceApplicationBuilder().build();
     }
+
 
     private static String token = null;
 

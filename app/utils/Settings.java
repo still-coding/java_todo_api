@@ -3,7 +3,11 @@ package utils;
 import io.github.cdimascio.dotenv.Dotenv;
 
 public class Settings {
-    private static final Dotenv dotenv = Dotenv.load();
+    private static Dotenv dotenv = Dotenv.load();;
+
+    public Settings(){
+        this.dotenv = Dotenv.load();
+    }
 
     public static String getJwtSecretKey() {
         return dotenv.get("JWT_SECRET_KEY");
