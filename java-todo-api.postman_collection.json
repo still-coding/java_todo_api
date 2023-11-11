@@ -19,7 +19,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"user2\",\n    \"password\": \"qwertyiop\"\n}",
+							"raw": "{\n    \"name\": \"user1\",\n    \"password\": \"qwerty\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -100,6 +100,29 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Delete Current User",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{URL}}users",
+							"host": [
+								"{{URL}}users"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -120,7 +143,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Buy a car\",\n    \"description\": \"ASAP!\"\n}",
+							"raw": "{\n    \"name\": \"Buy a car\",\n    \"description\": \"ASAP!\",\n    \"labels\": [\"car\"]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -151,17 +174,57 @@
 					"response": []
 				},
 				{
+					"name": "Get All Tasks Sorted",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL}}tasks?sort=-created",
+							"host": [
+								"{{URL}}tasks"
+							],
+							"query": [
+								{
+									"key": "sort",
+									"value": "-created"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Tasks With Labels",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL}}tasks?label=car",
+							"host": [
+								"{{URL}}tasks"
+							],
+							"query": [
+								{
+									"key": "label",
+									"value": "car"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Get Task by Id",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{URL}}tasks/0",
+							"raw": "{{URL}}tasks/654fdfe64e3dc55261baf551",
 							"host": [
 								"{{URL}}tasks"
 							],
 							"path": [
-								"0"
+								"654fdfe64e3dc55261baf551"
 							]
 						}
 					},
@@ -172,6 +235,15 @@
 					"request": {
 						"method": "PUT",
 						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"id\": \"654fdfe64e3dc55261baf551\",\n    \"name\": \"Buy a NEW car\",\n    \"description\": \"ASAPest!!1!\",\n    \"labels\": [\"car\", \"to buy\"]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
 						"url": {
 							"raw": "{{URL}}tasks",
 							"host": [
@@ -187,12 +259,12 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{URL}}tasks/0",
+							"raw": "{{URL}}tasks/654fdfe64e3dc55261baf551",
 							"host": [
 								"{{URL}}tasks"
 							],
 							"path": [
-								"0"
+								"654fdfe64e3dc55261baf551"
 							]
 						}
 					},
