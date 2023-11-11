@@ -1,5 +1,7 @@
 # java_todo_api
 
+![Tests status](https://github.com/still-coding/java_todo_api/actions/workflows/sbt-test.yml/badge.svg?branch=main)
+
 Todo REST API built with Play framework and Java.
 
 My first ever java project so here how it was.
