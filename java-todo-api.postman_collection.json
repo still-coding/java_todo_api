@@ -143,7 +143,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Buy a car\",\n    \"description\": \"ASAP!\",\n    \"labels\": [\"car\"]\n}",
+							"raw": "{\n    \"name\": \"First\",\n    \"description\": \"Get API done already\",\n    \"labels\": [\"develop\", \"java\", \"API\"]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -237,7 +237,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"id\": \"654fdfe64e3dc55261baf551\",\n    \"name\": \"Buy a NEW car\",\n    \"description\": \"ASAPest!!1!\",\n    \"labels\": [\"car\", \"to buy\"]\n}",
+							"raw": "{\n    \"id\": \"654fdfe64e3dc55261baf551\",\n    \"name\": \"Buy a car\",\n    \"description\": \"ASAP!\",\n    \"labels\": [\"car\", \"to buy\"]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -306,7 +306,7 @@
 	"variable": [
 		{
 			"key": "URL",
-			"value": "http://localhost:9000/",
+			"value": "http://91.210.168.40:9000/",
 			"type": "string"
 		},
 		{

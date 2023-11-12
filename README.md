@@ -2,10 +2,18 @@
 
 Todo REST API built with Play framework and Java.
 
+## Quickest start
+
+Go to http://91.210.168.40:9000/ to check if API is live.
+
+Import `java-todo-api.postman_collection.json` to Postman and have fun.
+
+
+
 ## Quick start
 Execute:
 ```shell
-sbt Universal/packageZipTarbal
+sbt Universal/packageZipTarball
 docker compose up
 ```
 
