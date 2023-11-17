@@ -6,60 +6,126 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import filters.JwtAuthorizationFilter;
 import models.Task;
 import org.bson.types.ObjectId;
+import org.javatuples.Pair;
+import play.libs.Files;
+import play.libs.Files.TemporaryFile;
 import play.libs.Json;
 import play.libs.concurrent.ClassLoaderExecutionContext;
 import play.mvc.Controller;
 import play.mvc.Http;
 import play.mvc.Result;
 import play.mvc.Security;
+import store.ImageStore;
 import store.TaskStore;
+import utils.PdfImageUtil;
 import utils.ResponseHelper;
-import java.util.stream.Collectors;
 
 import javax.inject.Inject;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import static java.util.concurrent.CompletableFuture.supplyAsync;
 
 
 public class TaskController extends Controller {
     private final ClassLoaderExecutionContext ec;
-
     private final TaskStore taskStore;
-
+    private final ImageStore imageStore;
     @Inject
-    public TaskController(ClassLoaderExecutionContext ec, TaskStore taskStore) {
-        this.taskStore = taskStore;
+    public TaskController(ClassLoaderExecutionContext ec, TaskStore taskStore, ImageStore imageStore) {
         this.ec = ec;
+        this.taskStore = taskStore;
+        this.imageStore = imageStore;
+    }
+
+    private final Result correctJson = ok("Correct JSON");
+    private Result checkJsonFields(JsonNode json, String[] fields) {
+        HashMap<String, Boolean> checkMap = new HashMap<String, Boolean>();
+        for (String field : fields) {
+            checkMap.put(field, json.findValue(field) == null);
+        }
+        StringBuffer resultMessage = new StringBuffer();
+        for (Map.Entry<String, Boolean> nullEntry : checkMap.entrySet()) {
+            if (nullEntry.getValue()) {
+                resultMessage.append("[");
+                resultMessage.append(nullEntry.getKey());
+                resultMessage.append("], ");
+            }
+        }
+        if (resultMessage.isEmpty()) {
+            return correctJson;
+        }
+        resultMessage.insert(0, "Missing parameter(s): ");
+        return badRequest(ResponseHelper.createResponse(resultMessage.substring(0, resultMessage.length() - 2)));
+    }
+
+    private Optional<Task> createTaskFromJson(JsonNode json, String userId) {
+        ((ObjectNode)json).put("userId", userId);
+        return taskStore.create(Json.fromJson(json, Task.class));
     }
 
     @Security.Authenticated(JwtAuthorizationFilter.class)
     public CompletionStage<Result> create(Http.Request request) {
-        JsonNode json = request.body().asJson();
-        String userId = request.attrs().get(Security.USERNAME);
         return supplyAsync(() -> {
-            if (json == null) {
-                return badRequest(ResponseHelper.createResponse("Expecting JSON data"));
-            }
+            JsonNode jsonBody = request.body().asJson();
+            String userId = request.attrs().get(Security.USERNAME);
+            Http.MultipartFormData<TemporaryFile> multiBody = request.body().asMultipartFormData();
+            String[] requiredFields = {"name", "description"};
             if (userId == null) {
                 return unauthorized(ResponseHelper.createResponse("Invalid credentials"));
             }
-            String name = json.findPath("name").textValue();
-            String description = json.findPath("description").textValue();
-            boolean nameMissing = name == null;
-            boolean descriptionMissing = description == null;
-            if (nameMissing || descriptionMissing) {
-                return badRequest(ResponseHelper.createResponse("Missing parameter(s): "
-                        + (nameMissing ? "[name]" : "") + (descriptionMissing ? "[description]" : "")));
+            if (jsonBody != null) {
+                Result jsonCheckResult = checkJsonFields(jsonBody, requiredFields);
+                if (!jsonCheckResult.equals(correctJson)) {
+                    return jsonCheckResult;
+                }
+                Optional<Task> taskOptional = createTaskFromJson(jsonBody, userId);
+                return taskOptional.map(task -> created(Json.toJson(task)))
+                        .orElse(internalServerError(ResponseHelper.createResponse("Could not create data")));
             }
-            ((ObjectNode)json).put("userId", userId);
-            Optional<Task> taskOptional = taskStore.create(Json.fromJson(json, Task.class));
+            if (multiBody != null) {
+                String[] jsons = multiBody.asFormUrlEncoded().get("json");
+                if (jsons == null) {
+                    return badRequest(ResponseHelper.createResponse("Multipart [json] field required"));
+                }
+                Http.MultipartFormData.FilePart<TemporaryFile> doc = multiBody.getFile("file");
+                if (doc == null) {
+                    return badRequest(ResponseHelper.createResponse("Multipart [file] field required"));
+                }
 
-            return taskOptional.map(task -> {
-                JsonNode jsonResponse = Json.toJson(task);
-                return created(jsonResponse);
-            }).orElse(internalServerError(ResponseHelper.createResponse("Could not create data")));
+                String fileName = doc.getFilename();
+                TemporaryFile file = doc.getRef();
+                if (!PdfImageUtil.isPdf(file)) {
+                    return badRequest(ResponseHelper.createResponse("PDF file required"));
+                }
+                List<BufferedImage> imageList = PdfImageUtil.convertPdfToImages(file);
+                if (imageList.isEmpty()) {
+                    return internalServerError(ResponseHelper.createResponse("Failed to convert PDF pages to images"));
+                }
+                List<ObjectId> taskDocPages = imageStore.createList(imageList, fileName);
+                JsonNode json = Json.parse(jsons[0]);
+                Result jsonCheckResult = checkJsonFields(json, requiredFields);
+                if (!jsonCheckResult.equals(correctJson)) {
+                    return jsonCheckResult;
+                }
+                ((ObjectNode)json).put("pdfName", fileName);
+                ((ObjectNode)json).set("pdfPages", Json.toJson(taskDocPages.stream().map(ObjectId::toHexString).collect(Collectors.toList())));
+                Optional<Task> taskOptional = createTaskFromJson(json, userId);
+
+                return taskOptional.map(task -> {
+                    return created(Json.toJson(task));
+                }).orElse(internalServerError(ResponseHelper.createResponse("Could not create data")));
+            }
+            return badRequest(ResponseHelper.createResponse("Expecting JSON data or Multipart data"));
         }, ec.current());
     }
 
@@ -111,43 +177,81 @@ public class TaskController extends Controller {
         }, ec.current());
     }
 
+    // TODO: too WET code
     @Security.Authenticated(JwtAuthorizationFilter.class)
     public CompletionStage<Result> update(Http.Request request) {
-        JsonNode json = request.body().asJson();
         String userId = request.attrs().get(Security.USERNAME);
+        JsonNode jsonBody = request.body().asJson();
+        Http.MultipartFormData<TemporaryFile> multiBody = request.body().asMultipartFormData();
+        String[] requiredFields = {"id", "name", "description"};
         return supplyAsync(() -> {
-            if (json == null) {
-                return badRequest(ResponseHelper.createResponse("Expecting JSON data"));
-            }
             if (userId == null) {
                 return unauthorized(ResponseHelper.createResponse("Invalid credentials"));
             }
-            String id = json.findPath("id").asText(null);
-            String name = json.findPath("name").textValue();
-            String description = json.findPath("description").textValue();
-            boolean idMissing = id == null;
-            boolean nameMissing = name == null;
-            boolean descriptionMissing = description == null;
+            if (jsonBody != null) {
+                Result jsonCheckResult = checkJsonFields(jsonBody, requiredFields);
+                if (!jsonCheckResult.equals(correctJson)) {
+                    return jsonCheckResult;
+                }
+                String id = jsonBody.findPath("id").asText(null);
+                Optional<Task> taskOptionalFromReq = taskStore.retrieve(new ObjectId(id));
+                if (taskOptionalFromReq.isEmpty()) {
+                    return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
+                }
+                Task taskToUpdate = taskOptionalFromReq.get();
+                if (!userId.equals(taskToUpdate.getUserId())) {
+                    return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
+                }
+                Optional<Task> taskOptional = taskStore.update(Json.fromJson(jsonBody, Task.class));
+                return taskOptional.map(task -> {
+                    imageStore.deleteList(taskToUpdate.truePdfPages());
+                    return ok(Json.toJson(task));
+                }).orElse(internalServerError(ResponseHelper.createResponse("Could not update data")));
+            }
+            if (multiBody != null) {
+                String[] jsons = multiBody.asFormUrlEncoded().get("json");
+                if (jsons == null) {
+                    return badRequest(ResponseHelper.createResponse("Multipart [json] field required"));
+                }
+                Http.MultipartFormData.FilePart<TemporaryFile> doc = multiBody.getFile("file");
+                if (doc == null) {
+                    return badRequest(ResponseHelper.createResponse("Multipart [file] field required"));
+                }
 
-            if (idMissing || nameMissing || descriptionMissing) {
-                return badRequest(ResponseHelper.createResponse("Missing parameter(s): "
-                        + (idMissing ? "[id]" : "")
-                        + (nameMissing ? "[name]" : "")
-                        + (descriptionMissing ? "[description]" : "")));
+                JsonNode json = Json.parse(jsons[0]);
+                Result jsonCheckResult = checkJsonFields(json, requiredFields);
+                if (!jsonCheckResult.equals(correctJson)) {
+                    return jsonCheckResult;
+                }
+                String id = json.findPath("id").asText(null);
+                Optional<Task> taskOptionalFromReq = taskStore.retrieve(new ObjectId(id));
+                if (taskOptionalFromReq.isEmpty()) {
+                    return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
+                }
+                Task taskToUpdate = taskOptionalFromReq.get();
+                if (!userId.equals(taskToUpdate.getUserId())) {
+                    return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
+                }
+                String fileName = doc.getFilename();
+                TemporaryFile file = doc.getRef();
+                if (!PdfImageUtil.isPdf(file)) {
+                    return badRequest(ResponseHelper.createResponse("PDF file required"));
+                }
+                List<BufferedImage> imageList = PdfImageUtil.convertPdfToImages(file);
+                if (imageList.isEmpty()) {
+                    return internalServerError(ResponseHelper.createResponse("Failed to convert PDF pages to images"));
+                }
+                imageStore.deleteList(taskToUpdate.truePdfPages());
+                List<ObjectId> taskDocPages = imageStore.createList(imageList, fileName);
+                ((ObjectNode)json).put("pdfName", fileName);
+                ((ObjectNode)json).set("pdfPages", Json.toJson(taskDocPages.stream().map(ObjectId::toHexString).collect(Collectors.toList())));
+
+                Optional<Task> taskOptional = taskStore.update(Json.fromJson(json, Task.class));
+                return taskOptional.map(task -> {
+                    return ok(Json.toJson(task));
+                }).orElse(internalServerError(ResponseHelper.createResponse("Could not update data")));
             }
-            Optional<Task> taskOptionalFromReq = taskStore.retrieve(new ObjectId(id));
-            if (taskOptionalFromReq.isEmpty()) {
-                return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
-            }
-            Task taskToUpdate = taskOptionalFromReq.get();
-            if (!Objects.equals(taskToUpdate.getUserId(), userId)) {
-                return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
-            }
-            Optional<Task> taskOptional = taskStore.update(Json.fromJson(json, Task.class));
-            return taskOptional.map(task -> {
-                JsonNode jsonResponse = Json.toJson(task);
-                return ok(jsonResponse);
-            }).orElse(internalServerError(ResponseHelper.createResponse("Could not create data")));
+            return badRequest(ResponseHelper.createResponse("Expecting JSON data or Multipart data"));
         }, ec.current());
     }
 
@@ -158,11 +262,133 @@ public class TaskController extends Controller {
             ObjectId taskId = new ObjectId(id);
             Optional<Task> taskOptional = taskStore.retrieve(taskId);
             return taskOptional.map(task -> {
-                if (!Objects.equals(task.getUserId(), userId))
+                if (!userId.equals(task.getUserId()))
                     return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
+                imageStore.deleteList(task.truePdfPages());
                 taskStore.delete(taskId);
                 return ok(ResponseHelper.createResponse("Task with id:" + id + " deleted"));
             }).orElse(notFound(ResponseHelper.createResponse("Task with id:" + id + " not found")));
         }, ec.current());
     }
+
+
+    @Security.Authenticated(JwtAuthorizationFilter.class)
+    public CompletionStage<Result> export(Http.Request request, String id) {
+        String userId = request.attrs().get(Security.USERNAME);
+        return supplyAsync(() -> {
+            ObjectId taskId = new ObjectId(id);
+            Optional<Task> taskOptional = taskStore.retrieve(taskId);
+            return taskOptional.map(task -> {
+                if (!userId.equals(task.getUserId()))
+                    return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
+
+                Files.TemporaryFile tempFile = Files.singletonTemporaryFileCreator().create(task.getId(), ".zip");
+                File tempZipFile = tempFile.path().toFile();
+
+                try (ZipOutputStream zipOutputStream = new ZipOutputStream(java.nio.file.Files.newOutputStream(tempFile.path()))) {
+                    JsonNode jsonNode = Json.toJson(task);
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    String jsonContent = objectMapper.writeValueAsString(jsonNode);
+                    zipOutputStream.putNextEntry(new ZipEntry(task.getId() + ".json"));
+                    zipOutputStream.write(jsonContent.getBytes());
+                    zipOutputStream.closeEntry();
+
+                    List<ObjectId> pageIds = task.truePdfPages();
+                    if (pageIds != null) {
+                        for (ObjectId pageId : pageIds) {
+                            Pair<String, byte[]> image = imageStore.retrieve(pageId);
+                            if (image != null) {
+                                zipOutputStream.putNextEntry(new ZipEntry(pageId.toHexString() + "_" +  image.getValue0()));
+                                zipOutputStream.write(image.getValue1());
+                                zipOutputStream.closeEntry();
+                            }
+                        }
+                    }
+                } catch (IOException e) {
+                    return internalServerError(ResponseHelper.createResponse("Error creating zip: " + e));
+                }
+                return ok(tempZipFile).as("application/zip")
+                        .withHeader("Content-Disposition", "attachment; filename=task_" + task.getId() +  ".zip");
+            }).orElse(notFound(ResponseHelper.createResponse("Task with id:" + id + " not found")));
+        }, ec.current());
+    }
+
+    @Security.Authenticated(JwtAuthorizationFilter.class)
+    public CompletionStage<Result> importTask(Http.Request request) {
+        return supplyAsync(() -> {
+            String userId = request.attrs().get(Security.USERNAME);
+            Http.MultipartFormData<TemporaryFile> multiBody = request.body().asMultipartFormData();
+
+            if (userId == null) {
+                return unauthorized(ResponseHelper.createResponse("Invalid credentials"));
+            }
+            if (multiBody == null) {
+                return badRequest(ResponseHelper.createResponse("Expecting Multipart data"));
+            }
+            Http.MultipartFormData.FilePart<TemporaryFile> zip = multiBody.getFile("file");
+            if (zip == null) {
+                return badRequest(ResponseHelper.createResponse("Multipart [file] field required"));
+            }
+            String zipFileName = zip.getFilename();
+            TemporaryFile tempZipFile = zip.getRef();
+            if (!PdfImageUtil.isZip(tempZipFile)) {
+                return badRequest(ResponseHelper.createResponse("ZIP file required"));
+            }
+            JsonNode jsonTask = null;
+            List<byte[]> images = new ArrayList<>();
+            try (ZipInputStream zipInputStream = new ZipInputStream(new FileInputStream(tempZipFile.path().toFile()))) {
+                ZipEntry zipEntry = zipInputStream.getNextEntry();
+                while (zipEntry != null) {
+                    String fileName = zipEntry.getName();
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[1024];
+                    int bytesRead;
+                    while ((bytesRead = zipInputStream.read(buffer)) != -1) {
+                        baos.write(buffer, 0, bytesRead);
+                    }
+                    byte[] fileContent = baos.toByteArray();
+                    // TODO figure out better way
+                    if (fileName.endsWith("json"))
+                    {
+                        jsonTask = Json.parse(fileContent);
+                    }
+                    if (fileName.endsWith("png"))
+                    {
+                        images.add(fileContent);
+                    }
+                    zipEntry = zipInputStream.getNextEntry();
+                }
+            } catch (IOException exc) {
+                return internalServerError(ResponseHelper.createResponse("Failed to unpack zip: " + exc));
+            }
+            if (jsonTask == null) {
+                return badRequest(ResponseHelper.createResponse("No json inside ZIP file"));
+            }
+            String[] requiredFields = {"userId", "name", "description", "labels", "pdfName", "pdfPages", "createdAt"};
+            Result jsonCheckResult = checkJsonFields(jsonTask, requiredFields);
+            if (!jsonCheckResult.equals(correctJson)) {
+                return jsonCheckResult;
+            }
+            if (!userId.equals(jsonTask.findValue("userId").asText())) {
+                return unauthorized(ResponseHelper.createResponse("Invalid credentials"));
+            }
+            boolean continu = (jsonTask.findValue("pdfName").asText() != null) == jsonTask.findValue("pdfPages").elements().hasNext() == !images.isEmpty();
+
+            if (!continu) {
+                return badRequest(ResponseHelper.createResponse("Inconsistent data about pdf pages"));
+            }
+            ((ObjectNode)jsonTask).remove("id");
+            ((ObjectNode)jsonTask).remove("pdfPages");
+            if (!images.isEmpty()) {
+                List<ObjectId> taskDocPages = imageStore.createList(images, jsonTask.get("pdfName").asText());
+                ((ObjectNode)jsonTask).set("pdfPages", Json.toJson(taskDocPages.stream().map(ObjectId::toHexString).collect(Collectors.toList())));
+            }
+            Optional<Task> taskOptional = taskStore.create(Json.fromJson(jsonTask, Task.class));
+
+            return taskOptional.map(task -> {
+                return created(Json.toJson(task));
+            }).orElse(internalServerError(ResponseHelper.createResponse("Could not create data")));
+        }, ec.current());
+    }
+
 }

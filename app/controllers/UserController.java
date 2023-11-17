@@ -3,6 +3,7 @@ package controllers;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import filters.JwtAuthorizationFilter;
+import models.Task;
 import models.User;
 import org.bson.types.ObjectId;
 import play.libs.Json;
@@ -11,11 +12,14 @@ import play.mvc.Controller;
 import play.mvc.Http;
 import play.mvc.Result;
 import play.mvc.Security;
+import store.ImageStore;
+import store.TaskStore;
 import store.UserStore;
 import utils.PasswordHelper;
 import utils.ResponseHelper;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 
@@ -24,11 +28,15 @@ import static java.util.concurrent.CompletableFuture.supplyAsync;
 public class UserController extends Controller {
     private ClassLoaderExecutionContext ec;
     private UserStore userStore;
+    private TaskStore taskStore;
+    private ImageStore imageStore;
 
     @Inject
-    public UserController(ClassLoaderExecutionContext ec, UserStore userStore) {
-        this.userStore = userStore;
+    public UserController(ClassLoaderExecutionContext ec, UserStore userStore, TaskStore taskStore, ImageStore imageStore) {
         this.ec = ec;
+        this.userStore = userStore;
+        this.taskStore = taskStore;
+        this.imageStore = imageStore;
     }
 
     public CompletionStage<Result> create(Http.Request request) {
@@ -83,8 +91,14 @@ public class UserController extends Controller {
     public CompletionStage<Result> delete(Http.Request request) {
         return supplyAsync(() -> {
             String userId = request.attrs().get(Security.USERNAME);
-            if (userStore.delete(new ObjectId(userId)))
+            ObjectId userObjectId = new ObjectId(userId);
+            if (userStore.delete(userObjectId))
             {
+                List<Task> taskList = taskStore.retrieveAll(userObjectId);
+                for (Task t : taskList) {
+                    imageStore.deleteList(t.truePdfPages());
+                    taskStore.delete(t.trueId());
+                }
                 return ok(ResponseHelper.createResponse("User with id:" + userId + " deleted"));
             }
             return notFound(ResponseHelper.createResponse("User with id:" + userId + " not found"));

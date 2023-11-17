@@ -52,12 +52,37 @@ This is my first ever java project so here how it was.
 ### Day 3
 
 * added MongoDB storage with Morphia
-* changed userId to BSON ObjectID/HexString type 
+* changed userId to BSON ObjectID/HexString type
 * added docker-compose.yml with Mongo and MongoExpress
 * fixed tests
 * added task labels
 * dockerized app
 
+### Day 4
+
+* added file upload functionality
+* made file type detection
+* added pdf to image conversion
+
+### Day 5
+
+* coded MongoDB GridFS image storage
+* extended task creation - it's now 2 way - Json or multipart data
+* task update now can delete or change task images
+
+### Day 6
+
+* fixed task deletion - it deletes all files in task  
+* fixed user deletion - deletes all tasks
+* made export/import endpoints
+
+### Day 7
+
+* made zip archive creation
+* coded export/import task
+
+
 ### Plans
 
+* refactor
 * set up testing workflow with GH Actions

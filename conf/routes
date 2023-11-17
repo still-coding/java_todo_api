@@ -13,9 +13,13 @@ GET     /login                      controllers.AuthController.login(request: Re
 GET     /tasks                      controllers.TaskController.retrieveAll(request: Request, sort: java.util.Optional[String], label: java.util.List[String])
 POST    /tasks                      controllers.TaskController.create(request: Request)
 GET     /tasks/:id                  controllers.TaskController.retrieve(request: Request, id: String)
+GET     /tasks/:id/export           controllers.TaskController.export(request: Request, id: String)
+POST    /tasks/import               controllers.TaskController.importTask(request: Request)
 PUT     /tasks                      controllers.TaskController.update(request: Request)
 DELETE  /tasks/:id                  controllers.TaskController.delete(request: Request, id: String)
 
+
+#POST     /upload                    controllers.FileController.uploadFile()
 
 # Map static resources from the /public folder to the /assets URL path
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)

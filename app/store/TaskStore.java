@@ -7,9 +7,7 @@ import dev.morphia.Morphia;
 import dev.morphia.query.Query;
 import dev.morphia.query.filters.Filters;
 import dev.morphia.query.updates.UpdateOperators;
-import dev.morphia.query.updates.UpdateOperators.*;
 import models.Task;
-import models.User;
 import org.bson.types.ObjectId;
 import utils.Settings;
 
@@ -18,7 +16,7 @@ import java.util.*;
 
 @Singleton
 public class TaskStore {
-//    private Map<Long, Task> tasks = new HashMap<>();
+
     private final Datastore datastore = Morphia.createDatastore(
             MongoClients.create(Settings.getMongoDbUri()), Settings.getMongoDbDatabaseName()
     );
@@ -44,7 +42,9 @@ public class TaskStore {
         UpdateResult results = query.update(
                 UpdateOperators.set("name", task.getName()),
                 UpdateOperators.set("description", task.getDescription()),
-                UpdateOperators.set("labels", task.getLabels())
+                UpdateOperators.set("labels", task.getLabels()),
+                UpdateOperators.set("pdfName", task.getPdfName()),
+                UpdateOperators.set("pdfPages", task.truePdfPages())
         ).execute();
         return Optional.ofNullable(datastore.find(Task.class).filter(Filters.eq("_id", new ObjectId(id))).first());
     }

@@ -4,10 +4,21 @@ services:
   mongo:
     image: mongo
     restart: always
-
-  api:
-    build: .
+#    environment:
+#      - MONGO_INITDB_ROOT_USERNAME=test
+#      - MONGO_INITDB_ROOT_PASSWORD=test
     ports:
-      - 9000:9000
+      - 27017:27017
+    # to persist data
+    #    volumes:
+    #      - ./data:/data/db
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      - ME_CONFIG_MONGODB_URL=mongodb://mongo:27017/
     depends_on:
       - mongo

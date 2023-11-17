@@ -1,8 +1,10 @@
 package models;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import dev.morphia.annotations.Entity;
@@ -19,6 +21,9 @@ public class Task {
     private String description;
 
     private HashSet<String> labels;
+
+    private String pdfName;
+    private List<ObjectId> pdfPages;
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Date createdAt;
 
@@ -60,9 +65,6 @@ public class Task {
         return createdAt;
     }
 
-    public Task() {
-        this.createdAt = new Date();
-    }
 
     public HashSet<String> getLabels() {
         return labels;
@@ -72,11 +74,39 @@ public class Task {
         this.labels = labels;
     }
 
-    public Task(ObjectId id, String name, String description) {
-        this.id = id;
-        this.name = name;
-        this.description = description;
+    public List<String> getPdfPages() {
+        if (pdfPages == null)
+            return new ArrayList<String>();
+        return pdfPages.stream()
+                .map(pId -> pId.toHexString())
+                .collect(Collectors.toList());
+    }
+
+    public void setPdfPages(List<ObjectId> pdfPages) {
+        this.pdfPages = pdfPages;
+    }
+
+    public String getPdfName() {
+        return pdfName;
+    }
+
+    public void setPdfName(String pdfName) {
+        this.pdfName = pdfName;
+    }
+
+    public Task() {
         this.createdAt = new Date();
     }
 
+    public List<ObjectId> truePdfPages() {
+        return pdfPages;
+    }
+
+    public ObjectId trueId() {
+        return id;
+    }
+
+    public ObjectId trueUserId() {
+        return userId;
+    }
 }

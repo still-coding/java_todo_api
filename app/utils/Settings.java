@@ -3,7 +3,7 @@ package utils;
 import io.github.cdimascio.dotenv.Dotenv;
 
 public class Settings {
-    private static Dotenv dotenv = Dotenv.load();;
+    private static Dotenv dotenv = Dotenv.load();
 
     public Settings(){
         this.dotenv = Dotenv.load();
