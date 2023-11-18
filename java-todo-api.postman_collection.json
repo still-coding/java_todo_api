@@ -19,7 +19,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"user1\",\n    \"password\": \"qwerty\"\n}",
+							"raw": "{\n    \"name\": \"user2\",\n    \"password\": \"qwerty\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -59,7 +59,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"user1\",\n    \"password\": \"qwerty\"\n}",
+							"raw": "{\n    \"name\": \"user2\",\n    \"password\": \"qwerty\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -142,13 +142,19 @@
 							}
 						],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"First\",\n    \"description\": \"Get API done already\",\n    \"labels\": [\"develop\", \"java\", \"API\"]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/home/goose/Downloads/Задание 2-1.pdf"
+								},
+								{
+									"key": "json",
+									"value": "{\n    \"name\": \"electricity\",\n    \"description\": \"dont forget to make double eth\",\n    \"labels\": [\"renovation\"]\n}",
+									"type": "text"
 								}
-							}
+							]
 						},
 						"url": {
 							"raw": "{{URL}}tasks",
@@ -219,12 +225,64 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{URL}}tasks/654fdfe64e3dc55261baf551",
+							"raw": "{{URL}}tasks/65568733c97b1649c68a09a7",
 							"host": [
 								"{{URL}}tasks"
 							],
 							"path": [
-								"654fdfe64e3dc55261baf551"
+								"65568733c97b1649c68a09a7"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Export Task by Id",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{URL}}tasks/6557f22a3c39ee223296aa68/export",
+							"host": [
+								"{{URL}}tasks"
+							],
+							"path": [
+								"6557f22a3c39ee223296aa68",
+								"export"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Import task",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/home/goose/Desktop/task_6557e4ccb63f476aac3b8aaf.zip"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{URL}}tasks/import",
+							"host": [
+								"{{URL}}tasks"
+							],
+							"path": [
+								"import"
 							]
 						}
 					},
@@ -236,13 +294,19 @@
 						"method": "PUT",
 						"header": [],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"id\": \"654fdfe64e3dc55261baf551\",\n    \"name\": \"Buy a car\",\n    \"description\": \"ASAP!\",\n    \"labels\": [\"car\", \"to buy\"]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/home/goose/Downloads/Задание 2.pdf"
+								},
+								{
+									"key": "json",
+									"value": "{\n    \"id\": \"65577002c97b1649c68a0a24\",\n    \"name\": \"new name\",\n    \"description\": \"new descr\"\n}",
+									"type": "text"
 								}
-							}
+							]
 						},
 						"url": {
 							"raw": "{{URL}}tasks",
@@ -259,12 +323,12 @@
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{URL}}tasks/654fdfe64e3dc55261baf551",
+							"raw": "{{URL}}tasks/6557e489b63f476aac3b8a9c",
 							"host": [
 								"{{URL}}tasks"
 							],
 							"path": [
-								"654fdfe64e3dc55261baf551"
+								"6557e489b63f476aac3b8a9c"
 							]
 						}
 					},
