@@ -19,6 +19,7 @@ import store.ImageStore;
 import store.TaskStore;
 import utils.PdfImageUtil;
 import utils.ResponseHelper;
+import utils.ZipUtil;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
@@ -282,32 +283,11 @@ public class TaskController extends Controller {
                 if (!userId.equals(task.getUserId()))
                     return notFound(ResponseHelper.createResponse("Task with id:" + id + " not found"));
 
-                Files.TemporaryFile tempFile = Files.singletonTemporaryFileCreator().create(task.getId(), ".zip");
-                File tempZipFile = tempFile.path().toFile();
+                Optional<File> zipOptional = ZipUtil.zip(task.getId(), ".zip", Json.toJson(task), task.truePdfPages());
+                if (zipOptional.isEmpty())
+                    return internalServerError(ResponseHelper.createResponse("Failed to create zip"));
 
-                try (ZipOutputStream zipOutputStream = new ZipOutputStream(java.nio.file.Files.newOutputStream(tempFile.path()))) {
-                    JsonNode jsonNode = Json.toJson(task);
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    String jsonContent = objectMapper.writeValueAsString(jsonNode);
-                    zipOutputStream.putNextEntry(new ZipEntry(task.getId() + ".json"));
-                    zipOutputStream.write(jsonContent.getBytes());
-                    zipOutputStream.closeEntry();
-
-                    List<ObjectId> pageIds = task.truePdfPages();
-                    if (pageIds != null) {
-                        for (ObjectId pageId : pageIds) {
-                            Pair<String, byte[]> image = imageStore.retrieve(pageId);
-                            if (image != null) {
-                                zipOutputStream.putNextEntry(new ZipEntry(pageId.toHexString() + "_" +  image.getValue0()));
-                                zipOutputStream.write(image.getValue1());
-                                zipOutputStream.closeEntry();
-                            }
-                        }
-                    }
-                } catch (IOException e) {
-                    return internalServerError(ResponseHelper.createResponse("Error creating zip: " + e));
-                }
-                return ok(tempZipFile).as("application/zip")
+                return ok(zipOptional.get()).as("application/zip")
                         .withHeader("Content-Disposition", "attachment; filename=task_" + task.getId() +  ".zip");
             }).orElse(notFound(ResponseHelper.createResponse("Task with id:" + id + " not found")));
         }, ec.current());
@@ -329,41 +309,23 @@ public class TaskController extends Controller {
             if (zip == null) {
                 return badRequest(ResponseHelper.createResponse("Multipart [file] field required"));
             }
-            String zipFileName = zip.getFilename();
             TemporaryFile tempZipFile = zip.getRef();
             if (!PdfImageUtil.isZip(tempZipFile)) {
                 return badRequest(ResponseHelper.createResponse("ZIP file required"));
             }
-            JsonNode jsonTask = null;
-            List<byte[]> images = new ArrayList<>();
-            try (ZipInputStream zipInputStream = new ZipInputStream(new FileInputStream(tempZipFile.path().toFile()))) {
-                ZipEntry zipEntry = zipInputStream.getNextEntry();
-                while (zipEntry != null) {
-                    String fileName = zipEntry.getName();
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    byte[] buffer = new byte[1024];
-                    int bytesRead;
-                    while ((bytesRead = zipInputStream.read(buffer)) != -1) {
-                        baos.write(buffer, 0, bytesRead);
-                    }
-                    byte[] fileContent = baos.toByteArray();
-                    // TODO figure out better way
-                    if (fileName.endsWith("json"))
-                    {
-                        jsonTask = Json.parse(fileContent);
-                    }
-                    if (fileName.endsWith("png"))
-                    {
-                        images.add(fileContent);
-                    }
-                    zipEntry = zipInputStream.getNextEntry();
-                }
-            } catch (IOException exc) {
-                return internalServerError(ResponseHelper.createResponse("Failed to unpack zip: " + exc));
+            Pair<Optional<JsonNode>, Optional<List<byte[]>>> jsonImagesOptionalPair = ZipUtil.unzip(tempZipFile.path().toFile());
+
+            if (jsonImagesOptionalPair.getValue0().isEmpty() && jsonImagesOptionalPair.getValue1().isEmpty()) {
+                return internalServerError(ResponseHelper.createResponse("Failed to unpack zip"));
             }
-            if (jsonTask == null) {
+
+            if (jsonImagesOptionalPair.getValue0().isEmpty()) {
                 return badRequest(ResponseHelper.createResponse("No json inside ZIP file"));
             }
+
+            JsonNode jsonTask = jsonImagesOptionalPair.getValue0().get();
+            List<byte[]> images = jsonImagesOptionalPair.getValue1().get();
+
             String[] requiredFields = {"userId", "name", "description", "labels", "pdfName", "pdfPages", "createdAt"};
             Result jsonCheckResult = checkJsonFields(jsonTask, requiredFields);
             if (!jsonCheckResult.equals(correctJson)) {

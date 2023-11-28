@@ -49,6 +49,7 @@ public class PdfImageUtil {
                 BufferedImage bim = pdfRenderer.renderImageWithDPI(page, renderDpi);
                 result.add(bim);
             }
+            document.close();
         }
         catch (IOException exc) {
             return result;

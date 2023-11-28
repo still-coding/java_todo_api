@@ -81,8 +81,18 @@ This is my first ever java project so here how it was.
 * made zip archive creation
 * coded export/import task
 
+### Day 8
 
-### Plans
+* refactored
+* bugfixes:
+  * PDF document was never closed
+  * PDF to image conversion failed on documents with JPEG2000 pics in it - dependencies for this format support added to `build.sbt`
+  * same potential bug for JBIG2 format - not encountered on any of my PDFs but added dependency anyway
 
-* refactor
-* set up testing workflow with GH Actions
+## Notes:
+
+Pdfbox spits out warnings during conversion of documents with unsupported fonts - no possible solution according to documentation - it's the problem with document itself. Can result in:
+* missing non-Unicode symbols
+* fallback to default fonts
+
+It may be useful to log such warnings for performance and further research.
