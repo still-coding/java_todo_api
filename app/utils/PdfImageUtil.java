@@ -15,7 +15,7 @@ import java.util.List;
 public class PdfImageUtil {
 
     private static final String imageFormat = "png";
-    private static final int renderDpi = 300;
+    private static final int renderDpi = Settings.getOutputImageDpi();
 
     public static boolean isContentType(TemporaryFile file, String type) {
         String contentType = null;

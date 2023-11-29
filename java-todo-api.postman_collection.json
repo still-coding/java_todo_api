@@ -147,11 +147,11 @@
 								{
 									"key": "file",
 									"type": "file",
-									"src": "/home/goose/Downloads/Задание 2-1.pdf"
+									"src": "/home/goose/Desktop/repo/java/pdf_converter/pdf/need_to_be.pdf"
 								},
 								{
 									"key": "json",
-									"value": "{\n    \"name\": \"electricity\",\n    \"description\": \"dont forget to make double eth\",\n    \"labels\": [\"renovation\"]\n}",
+									"value": "{\n    \"name\": \"wierd pdf\",\n    \"description\": \"convert already!\",\n    \"labels\": [\"testing\"]\n}",
 									"type": "text"
 								}
 							]
@@ -242,12 +242,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{URL}}tasks/6557f22a3c39ee223296aa68/export",
+							"raw": "{{URL}}tasks/65675356e824ff710545b04e/export",
 							"host": [
 								"{{URL}}tasks"
 							],
 							"path": [
-								"6557f22a3c39ee223296aa68",
+								"65675356e824ff710545b04e",
 								"export"
 							]
 						}
@@ -299,11 +299,11 @@
 								{
 									"key": "file",
 									"type": "file",
-									"src": "/home/goose/Downloads/Задание 2.pdf"
+									"src": "/home/goose/Downloads/python_softline/итоговое.pdf"
 								},
 								{
 									"key": "json",
-									"value": "{\n    \"id\": \"65577002c97b1649c68a0a24\",\n    \"name\": \"new name\",\n    \"description\": \"new descr\"\n}",
+									"value": "{\n    \"id\": \"65581a49889b5e49a97635a2\",\n    \"name\": \"new name\",\n    \"description\": \"new descr\"\n}",
 									"type": "text"
 								}
 							]

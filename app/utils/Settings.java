@@ -25,4 +25,8 @@ public class Settings {
         return dotenv.get("MONGODB_DB_NAME");
     }
 
+    public static int getOutputImageDpi() {
+        return Integer.parseInt(dotenv.get("OUTPUT_IMAGE_DPI"));
+    }
+
 }
